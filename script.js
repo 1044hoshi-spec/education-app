@@ -7,61 +7,63 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeModal = document.getElementById('closeModal');
     const appForm = document.getElementById('appForm');
 
-    // Default built-in apps if none exist
-    const defaultApps = [
-        { id: 1, name: 'タイマー', url: 'timer.html', type: 'calculator', status: 'approved' },
-        { id: 2, name: '算数ドリル', url: '#', type: 'notebook', status: 'approved' }
-    ];
-
-    // Initialize localStorage if empty
-    if (!localStorage.getItem('schoolApps')) {
-        localStorage.setItem('schoolApps', JSON.stringify(defaultApps));
-    } else {
-        // Migration: If they already have schoolApps, force update id:1 to the real timer app
-        let allApps = JSON.parse(localStorage.getItem('schoolApps') || '[]');
-        const oldTimerIndex = allApps.findIndex(a => a.id === 1);
-        if (oldTimerIndex !== -1) {
-            allApps[oldTimerIndex].name = 'タイマー';
-            allApps[oldTimerIndex].url = 'timer.html';
-            allApps[oldTimerIndex].type = 'calculator';
-            localStorage.setItem('schoolApps', JSON.stringify(allApps));
-        }
+    // Firestore initialization check for default apps
+    // This runs once to ensure the default Timer app exists in the global database
+    if (appContainer) {
+        db.collection("apps").get().then((snapshot) => {
+            if (snapshot.empty) {
+                // Seed default app
+                db.collection("apps").add({
+                    name: 'タイマー',
+                    url: 'timer.html',
+                    type: 'calculator',
+                    status: 'approved',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+        });
     }
 
-    // Render approved apps
-    function renderApps() {
+    // Render approved apps using Firestore realtime listener
+    function setupAppListener() {
         if(!appContainer) return; // Might be on admin page
-        appContainer.innerHTML = '';
-        const allApps = JSON.parse(localStorage.getItem('schoolApps') || '[]');
-        const approvedApps = allApps.filter(app => app.status === 'approved');
-
-        if (approvedApps.length === 0) {
-            appContainer.innerHTML = '<div class="empty-state">アプリがまだ登録されていません。</div>';
-            return;
-        }
-
-        approvedApps.forEach(app => {
-            const el = document.createElement('a');
-            el.href = app.url;
-            el.target = '_blank'; // Open in new tab
-            el.className = 'app-card';
+        
+        db.collection("apps").where("status", "==", "approved")
+          .onSnapshot((snapshot) => {
+            appContainer.innerHTML = '';
             
-            const iconMap = {
-                notebook: '📓', calculator: '🧮', ruler: '📏', eraser: '🧽', pencil: '✏️', scissors: '✂️', microscope: '🔬', palette: '🎨', book: '📖',
-                dog: '🐶', cat: '🐱', fox: '🦊', bear: '🐻', panda: '🐼', lion: '🦁', frog: '🐸', penguin: '🐧', monkey: '🐵',
-                tree: '🌲', palm: '🌴', cactus: '🌵', tulip: '🌷', cherryblossom: '🌸', sunflower: '🌻', mushroom: '🍄',
-                apple: '🍎', banana: '🍌', strawberry: '🍓', pizza: '🍕', burger: '🍔', sushi: '🍣', onigiri: '🍙', cake: '🍰', donut: '🍩'
-            };
-            let icon = iconMap[app.type] || '📦';
+            if (snapshot.empty) {
+                appContainer.innerHTML = '<div class="empty-state">アプリがまだ登録されていません。</div>';
+                return;
+            }
 
-            el.innerHTML = `
-                <div class="app-icon">${icon}</div>
-                <div class="app-info">
-                    <h3>${app.name}</h3>
-                    <p>カテゴリ: ${app.type}</p>
-                </div>
-            `;
-            appContainer.appendChild(el);
+            snapshot.forEach(doc => {
+                const app = doc.data();
+                const el = document.createElement('a');
+                el.href = app.url;
+                el.target = '_blank'; // Open in new tab
+                el.className = 'app-card';
+                
+                const iconMap = {
+                    notebook: '📓', calculator: '🧮', ruler: '📏', eraser: '🧽', pencil: '✏️', scissors: '✂️', microscope: '🔬', palette: '🎨', book: '📖',
+                    dog: '🐶', cat: '🐱', fox: '🦊', bear: '🐻', panda: '🐼', lion: '🦁', frog: '🐸', penguin: '🐧', monkey: '🐵',
+                    tree: '🌲', palm: '🌴', cactus: '🌵', tulip: '🌷', cherryblossom: '🌸', sunflower: '🌻', mushroom: '🍄',
+                    apple: '🍎', banana: '🍌', strawberry: '🍓', pizza: '🍕', burger: '🍔', sushi: '🍣', onigiri: '🍙', cake: '🍰', donut: '🍩'
+                };
+                let icon = iconMap[app.type] || '📦';
+
+                el.innerHTML = `
+                    <div class="app-icon">${icon}</div>
+                    <div class="app-info">
+                        <h3>${app.name}</h3>
+                        <p>カテゴリ: ${app.type}</p>
+                    </div>
+                `;
+                appContainer.appendChild(el);
+            });
+        }, (error) => {
+            console.error("Error fetching approved apps: ", error);
+            appContainer.innerHTML = '<div class="empty-state" style="color:red;">データの読み込みに失敗しました。</div>';
         });
     }
 
@@ -130,31 +132,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = document.getElementById('appUrl').value;
             const type = document.getElementById('appType').value;
 
-            const newApp = {
-                id: Date.now(),
+            // Submit to Firestore
+            db.collection("apps").add({
                 name: name,
                 url: url,
                 type: type,
-                status: 'pending' // Needs approval
-            };
-
-            const allApps = JSON.parse(localStorage.getItem('schoolApps') || '[]');
-            allApps.push(newApp);
-            localStorage.setItem('schoolApps', JSON.stringify(allApps));
-
-            alert('申請が完了しました。管理者の承認をお待ちください。');
-            
-            appForm.reset();
-            submitModal.classList.remove('active');
-            
-            // Reset icon picker to first
-            if (iconPickerContainer) {
-                const firstIcon = iconPickerContainer.querySelector('.icon-option');
-                if (firstIcon) firstIcon.click();
-            }
+                status: 'pending', // Needs approval
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert('申請が完了しました。管理者の承認をお待ちください。');
+                appForm.reset();
+                submitModal.classList.remove('active');
+                
+                // Reset icon picker to first
+                if (iconPickerContainer) {
+                    const firstIcon = iconPickerContainer.querySelector('.icon-option');
+                    if (firstIcon) firstIcon.click();
+                }
+            }).catch((error) => {
+                console.error("Error adding document: ", error);
+                alert("送信エラーが発生しました。");
+            });
         });
     }
 
-    // Initial render
-    renderApps();
+    // Initialize listener
+    setupAppListener();
 });
