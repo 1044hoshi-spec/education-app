@@ -134,6 +134,7 @@
         let totalSeconds = 180;
         let remainingSeconds = 180;
         let timerId = null;
+        let audioCtx = null;
         const radius = 140;
         const circumference = 2 * Math.PI * radius; // Approx 879.6
 
@@ -178,8 +179,50 @@
         minInput.addEventListener('change', setTotalTime);
         secInput.addEventListener('change', setTotalTime);
 
+        function playBeep() {
+            if (!audioCtx) return;
+            
+            // ピピっ（休符）ピピっ（休符）ピピっ のパターンを3回鳴らす
+            for (let i = 0; i < 3; i++) {
+                const startTime = audioCtx.currentTime + (i * 0.6);
+                
+                // 1回目の「ピ」
+                playSingleBeep(startTime);
+                // 2回目の「ピ」 (0.15秒後)
+                playSingleBeep(startTime + 0.15);
+            }
+        }
+
+        function playSingleBeep(time) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.type = 'square'; // 目覚まし時計っぽい音（矩形波）
+            osc.frequency.setValueAtTime(1000, time); // 1000Hz
+            
+            // アタックとリリースをつけてクリックノイズを防ぐ
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.5, time + 0.01);
+            gain.gain.setValueAtTime(0.5, time + 0.08);
+            gain.gain.linearRampToValueAtTime(0, time + 0.1);
+            
+            osc.start(time);
+            osc.stop(time + 0.1);
+        }
+
         startBtn.addEventListener('click', () => {
             if (timerId !== null) return;
+
+            // ブラウザの仕様（ユーザー操作時に音の許可を得る）に対応
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
             
             if(remainingSeconds === totalSeconds) {
                 setTotalTime();
@@ -199,7 +242,12 @@
                     startBtn.style.display = 'block';
                     stopBtn.style.display = 'none';
                     progressCircle.style.stroke = '#ef4444';
-                    alert("時間です！");
+                    playBeep(); // 音を鳴らす
+                    
+                    // 音が鳴り終わる頃（約1.8秒後）にアラートを出す
+                    setTimeout(() => {
+                        alert("時間です！");
+                    }, 1800);
                 }
                 updateDisplay();
             }, 1000);
