@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アプリポータル</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo">🚀</div>
+                <h2>AppPortal</h2>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active">
+                    <span class="icon">📁</span>
+                    マイアプリ
+                </a>
+                <a href="#" class="nav-item" id="btnContactBook">
+                    <span class="icon">➕</span>
+                    アプリを登録
+                </a>
+                <a href="admin.html" class="nav-item">
+                    <span class="icon">⚙️</span>
+                    管理画面
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <h1>マイアプリ一覧</h1>
+                <p class="subtitle">あなたのお気に入りツールにすばやくアクセス</p>
+            </header>
+            
+            <div class="app-grid" id="appContainer">
+                <!-- Apps will be rendered here dynamically -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Submission Modal -->
+    <div class="modal" id="submitModal">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h2>新しいアプリを登録</h2>
+                <button class="close-btn" id="closeModal">&times;</button>
+            </div>
+            <form id="appForm">
+                <div class="form-group">
+                    <label for="appName">アプリ名</label>
+                    <input type="text" id="appName" required placeholder="例：算数ドリル">
+                </div>
+                <div class="form-group">
+                    <label for="appUrl">URL</label>
+                    <input type="url" id="appUrl" required placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>アイコンを選択</label>
+                    <input type="hidden" id="appType" value="notebook">
+                    <div id="iconPickerContainer" class="icon-picker">
+                        <!-- Icons will be injected here by JS -->
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">登録を申請する</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

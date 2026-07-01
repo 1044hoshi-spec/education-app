@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプルタイマー</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #0f172a;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            flex-direction: column;
+        }
+
+        .timer-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+        }
+
+        svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        circle {
+            fill: none;
+            stroke-width: 12;
+            stroke-linecap: round;
+        }
+
+        .bg-circle {
+            stroke: #1e293b;
+        }
+
+        .progress-circle {
+            stroke: #3b82f6;
+            stroke-dasharray: 880; /* 2 * pi * r (r=140) */
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 1s linear, stroke 0.5s;
+        }
+
+        .time-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            font-weight: 800;
+            letter-spacing: -2px;
+        }
+
+        .controls {
+            margin-top: 40px;
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            background: #3b82f6;
+            color: white;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button.stop {
+            background: #ef4444;
+        }
+
+        .inputs {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input {
+            width: 70px;
+            padding: 10px;
+            font-size: 1.2rem;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #1e293b;
+            color: white;
+            text-align: center;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="inputs" id="inputContainer">
+        <input type="number" id="minInput" value="3" min="0" max="99"> 分
+        <input type="number" id="secInput" value="0" min="0" max="59"> 秒
+    </div>
+
+    <div class="timer-container">
+        <svg viewBox="0 0 300 300">
+            <circle class="bg-circle" cx="150" cy="150" r="140"></circle>
+            <circle class="progress-circle" id="progress" cx="150" cy="150" r="140"></circle>
+        </svg>
+        <div class="time-display" id="timeDisplay">03:00</div>
+    </div>
+
+    <div class="controls">
+        <button id="startBtn">スタート</button>
+        <button id="stopBtn" class="stop" style="display:none;">ストップ</button>
+        <button id="resetBtn">リセット</button>
+    </div>
+
+    <script>
+        let totalSeconds = 180;
+        let remainingSeconds = 180;
+        let timerId = null;
+        const radius = 140;
+        const circumference = 2 * Math.PI * radius; // Approx 879.6
+
+        const progressCircle = document.getElementById('progress');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const inputContainer = document.getElementById('inputContainer');
+        const minInput = document.getElementById('minInput');
+        const secInput = document.getElementById('secInput');
+
+        progressCircle.style.strokeDasharray = circumference;
+
+        function updateDisplay() {
+            const m = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+            const s = (remainingSeconds % 60).toString().padStart(2, '0');
+            timeDisplay.textContent = `${m}:${s}`;
+
+            const offset = circumference - (remainingSeconds / totalSeconds) * circumference;
+            progressCircle.style.strokeDashoffset = offset;
+
+            // Change color as time gets low
+            if (remainingSeconds <= 10 && totalSeconds > 10) {
+                progressCircle.style.stroke = '#ef4444'; // red
+            } else if (remainingSeconds <= totalSeconds / 4) {
+                progressCircle.style.stroke = '#f59e0b'; // orange
+            } else {
+                progressCircle.style.stroke = '#3b82f6'; // blue
+            }
+        }
+
+        function setTotalTime() {
+            const m = parseInt(minInput.value) || 0;
+            const s = parseInt(secInput.value) || 0;
+            totalSeconds = (m * 60) + s;
+            if(totalSeconds === 0) totalSeconds = 1; // prevent divide by zero
+            remainingSeconds = totalSeconds;
+            updateDisplay();
+        }
+
+        minInput.addEventListener('change', setTotalTime);
+        secInput.addEventListener('change', setTotalTime);
+
+        startBtn.addEventListener('click', () => {
+            if (timerId !== null) return;
+            
+            if(remainingSeconds === totalSeconds) {
+                setTotalTime();
+            }
+
+            inputContainer.style.opacity = '0.5';
+            inputContainer.style.pointerEvents = 'none';
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'block';
+
+            timerId = setInterval(() => {
+                remainingSeconds--;
+                if (remainingSeconds <= 0) {
+                    remainingSeconds = 0;
+                    clearInterval(timerId);
+                    timerId = null;
+                    startBtn.style.display = 'block';
+                    stopBtn.style.display = 'none';
+                    progressCircle.style.stroke = '#ef4444';
+                    alert("時間です！");
+                }
+                updateDisplay();
+            }, 1000);
+        });
+
+        stopBtn.addEventListener('click', () => {
+            clearInterval(timerId);
+            timerId = null;
+            startBtn.style.display = 'block';
+            stopBtn.style.display = 'none';
+        });
+
+        resetBtn.addEventListener('click', () => {
+            clearInterval(timerId);
+            timerId = null;
+            startBtn.style.display = 'block';
+            stopBtn.style.display = 'none';
+            inputContainer.style.opacity = '1';
+            inputContainer.style.pointerEvents = 'auto';
+            setTotalTime();
+        });
+
+        // Initialize
+        updateDisplay();
+    </script>
+</body>
+</html>
